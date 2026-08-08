@@ -102,7 +102,6 @@ document.addEventListener('DOMContentLoaded', () => {
     sourceModal.classList.remove('active');
 
     try {
-      // Notify main process of selected source ID
       if (window.onyxApi.setSelectedSource) {
         await window.onyxApi.setSelectedSource(source.id);
       }
@@ -113,6 +112,8 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       let stream = null;
+
+      // Method 1: Try direct getUserMedia with specific source ID
       try {
         const constraints = {
           audio: false,
@@ -124,9 +125,35 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         };
         stream = await navigator.mediaDevices.getUserMedia(constraints);
-      } catch (errGUM) {
-        console.warn('getUserMedia failed, trying getDisplayMedia fallback:', errGUM);
-        stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+      } catch (err1) {
+        console.warn('Direct getUserMedia failed for source:', source.name, err1);
+
+        // Method 2: Try getDisplayMedia fallback
+        try {
+          stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+        } catch (err2) {
+          console.warn('getDisplayMedia fallback failed:', err2);
+
+          // Method 3: Fallback to primary screen capture if window is minimized or restricted
+          const allSources = await window.onyxApi.getSources();
+          const screenSource = allSources.find(s => s.id.startsWith('screen:')) || allSources[0];
+
+          if (screenSource) {
+            const screenConstraints = {
+              audio: false,
+              video: {
+                mandatory: {
+                  chromeMediaSource: 'desktop',
+                  chromeMediaSourceId: screenSource.id
+                }
+              }
+            };
+            stream = await navigator.mediaDevices.getUserMedia(screenConstraints);
+            alert(`Catatan: Window "${source.name}" sedang di-minimize atau tidak dapat dibaca oleh OS. Perekaman dialihkan ke Screen Utama.`);
+          } else {
+            throw err1;
+          }
+        }
       }
 
       currentStream = stream;
@@ -148,9 +175,9 @@ document.addEventListener('DOMContentLoaded', () => {
       editorPanel.style.display = 'none';
 
       currentMode = 'live';
-      updateStatus('Ready (Live Stream)', false);
+      updateStatus(`Ready: ${source.name}`, false);
     } catch (err) {
-      alert('Gagal membuka stream window: ' + err.message);
+      alert('Gagal membuka stream: ' + err.message + '\n\nTips: Pastikan window yang ingin direkam terbuka dan tidak dalam keadaan di-minimize ke taskbar.');
     }
   }
 
