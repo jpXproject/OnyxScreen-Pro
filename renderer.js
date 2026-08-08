@@ -102,6 +102,11 @@ document.addEventListener('DOMContentLoaded', () => {
     sourceModal.classList.remove('active');
 
     try {
+      // Notify main process of selected source ID
+      if (window.onyxApi.setSelectedSource) {
+        await window.onyxApi.setSelectedSource(source.id);
+      }
+
       // Stop existing stream
       if (currentStream) {
         currentStream.getTracks().forEach(t => t.stop());

@@ -4,6 +4,7 @@ const fs = require('fs');
 const { spawn } = require('child_process');
 
 let mainWindow;
+let currentSelectedSourceId = null;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -32,11 +33,14 @@ function createWindow() {
 app.whenReady().then(() => {
   createWindow();
 
-  // Handle display media requests cleanly
+  // Dynamically match display media request to user's selected window/screen source
   if (session && session.defaultSession) {
     session.defaultSession.setDisplayMediaRequestHandler((request, callback) => {
-      desktopCapturer.getSources({ types: ['screen', 'window'] }).then((sources) => {
-        if (sources.length > 0) {
+      desktopCapturer.getSources({ types: ['window', 'screen'] }).then((sources) => {
+        const found = sources.find(s => s.id === currentSelectedSourceId);
+        if (found) {
+          callback({ video: found });
+        } else if (sources.length > 0) {
           callback({ video: sources[0] });
         } else {
           callback({ video: null });
@@ -55,6 +59,11 @@ app.on('window-all-closed', () => {
 });
 
 /* IPC Handlers */
+ipcMain.handle('set-selected-source', (event, sourceId) => {
+  currentSelectedSourceId = sourceId;
+  return { success: true };
+});
+
 ipcMain.handle('get-sources', async () => {
   try {
     const sources = await desktopCapturer.getSources({
