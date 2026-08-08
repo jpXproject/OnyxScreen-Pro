@@ -4,6 +4,7 @@ const fs = require('fs');
 const { spawn } = require('child_process');
 
 let mainWindow;
+let selectedDesktopSource = null;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -32,17 +33,20 @@ function createWindow() {
 app.whenReady().then(() => {
   createWindow();
 
-  // Allow native displayMedia window selection
+  // Register displayMedia handler matching OpenScreen architecture
   if (session && session.defaultSession) {
     session.defaultSession.setDisplayMediaRequestHandler((request, callback) => {
-      desktopCapturer.getSources({ types: ['window', 'screen'] }).then((sources) => {
-        // If request has a specific selection or prompt, grant access
-        if (sources.length > 0) {
-          callback({ video: sources[0] });
-        } else {
-          callback({ video: null });
-        }
-      }).catch(() => callback({ video: null }));
+      if (selectedDesktopSource) {
+        callback({ video: selectedDesktopSource });
+      } else {
+        desktopCapturer.getSources({ types: ['window', 'screen'] }).then((sources) => {
+          if (sources.length > 0) {
+            callback({ video: sources[0] });
+          } else {
+            callback({ video: null });
+          }
+        }).catch(() => callback({ video: null }));
+      }
     });
   }
 
@@ -56,6 +60,21 @@ app.on('window-all-closed', () => {
 });
 
 /* IPC Handlers */
+ipcMain.handle('select-source-by-id', async (event, sourceId) => {
+  try {
+    const sources = await desktopCapturer.getSources({ types: ['window', 'screen'] });
+    const found = sources.find(s => s.id === sourceId);
+    if (found) {
+      selectedDesktopSource = found;
+      return { success: true, name: found.name };
+    }
+    return { success: false, error: 'Source not found' };
+  } catch (err) {
+    console.error('Error selecting source by id:', err);
+    return { success: false, error: err.message };
+  }
+});
+
 ipcMain.handle('get-sources', async () => {
   try {
     const sources = await desktopCapturer.getSources({

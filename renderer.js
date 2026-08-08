@@ -140,34 +140,30 @@ document.addEventListener('DOMContentLoaded', () => {
     sourceModal.classList.remove('active');
 
     try {
-      if (window.onyxApi.setSelectedSource) {
-        await window.onyxApi.setSelectedSource(source.id);
+      // Store exact DesktopCapturerSource object in main process
+      if (window.onyxApi.selectSourceById) {
+        const res = await window.onyxApi.selectSourceById(source.id);
+        if (!res.success) {
+          console.warn('Could not select source by id:', res.error);
+        }
       }
 
+      // Stop existing stream
       if (currentStream) {
         currentStream.getTracks().forEach(t => t.stop());
       }
 
-      let stream = null;
-      try {
-        const constraints = {
-          audio: false,
-          video: {
-            mandatory: {
-              chromeMediaSource: 'desktop',
-              chromeMediaSourceId: source.id
-            }
-          }
-        };
-        stream = await navigator.mediaDevices.getUserMedia(constraints);
-      } catch (err1) {
-        // Fallback to native picker if constraint rejected
-        stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
-      }
+      // Trigger getDisplayMedia which uses setDisplayMediaRequestHandler for exact window
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: true,
+        audio: false
+      });
 
       attachStream(stream, source.name);
     } catch (err) {
-      alert('Gagal membuka window stream: ' + err.message);
+      if (err.name !== 'NotAllowedError') {
+        alert('Gagal membuka window stream: ' + err.message);
+      }
     }
   }
 
