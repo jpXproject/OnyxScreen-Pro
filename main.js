@@ -3,9 +3,16 @@ const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
 
-// Enable screen capture features in Chromium
+// Enable screen capture features in Chromium & prevent GPU cache lock conflicts
 app.commandLine.appendSwitch('enable-usermedia-screen-capturing');
 app.commandLine.appendSwitch('allow-http-screen-capture');
+app.commandLine.appendSwitch('disable-gpu-shader-disk-cache');
+
+// Request Single Instance Lock to prevent multi-process cache access denied (0x5) errors
+const gotTheLock = app.requestSingleInstanceLock();
+if (!gotTheLock) {
+  app.quit();
+}
 
 let mainWindow;
 let currentSelectedSourceId = null;
@@ -59,6 +66,13 @@ app.whenReady().then(() => {
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
+});
+
+app.on('second-instance', () => {
+  if (mainWindow) {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.focus();
+  }
 });
 
 app.on('window-all-closed', () => {
