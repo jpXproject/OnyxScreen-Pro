@@ -3,8 +3,12 @@ const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
 
+// Enable screen capture features in Chromium
+app.commandLine.appendSwitch('enable-usermedia-screen-capturing');
+app.commandLine.appendSwitch('allow-http-screen-capture');
+
 let mainWindow;
-let selectedDesktopSource = null;
+let currentSelectedSourceId = null;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -33,20 +37,22 @@ function createWindow() {
 app.whenReady().then(() => {
   createWindow();
 
-  // Register displayMedia handler matching OpenScreen architecture
+  // Register displayMedia handler fetching fresh desktop sources per request
   if (session && session.defaultSession) {
     session.defaultSession.setDisplayMediaRequestHandler((request, callback) => {
-      if (selectedDesktopSource) {
-        callback({ video: selectedDesktopSource });
-      } else {
-        desktopCapturer.getSources({ types: ['window', 'screen'] }).then((sources) => {
-          if (sources.length > 0) {
-            callback({ video: sources[0] });
-          } else {
-            callback({ video: null });
-          }
-        }).catch(() => callback({ video: null }));
-      }
+      desktopCapturer.getSources({ types: ['window', 'screen'] }).then((sources) => {
+        const target = sources.find(s => s.id === currentSelectedSourceId);
+        if (target) {
+          callback({ video: target });
+        } else if (sources.length > 0) {
+          callback({ video: sources[0] });
+        } else {
+          callback({ video: null });
+        }
+      }).catch((err) => {
+        console.error('setDisplayMediaRequestHandler error:', err);
+        callback({ video: null });
+      });
     });
   }
 
@@ -61,18 +67,8 @@ app.on('window-all-closed', () => {
 
 /* IPC Handlers */
 ipcMain.handle('select-source-by-id', async (event, sourceId) => {
-  try {
-    const sources = await desktopCapturer.getSources({ types: ['window', 'screen'] });
-    const found = sources.find(s => s.id === sourceId);
-    if (found) {
-      selectedDesktopSource = found;
-      return { success: true, name: found.name };
-    }
-    return { success: false, error: 'Source not found' };
-  } catch (err) {
-    console.error('Error selecting source by id:', err);
-    return { success: false, error: err.message };
-  }
+  currentSelectedSourceId = sourceId;
+  return { success: true, sourceId };
 });
 
 ipcMain.handle('get-sources', async () => {
