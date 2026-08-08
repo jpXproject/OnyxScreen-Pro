@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OnyxScreen Pro — Screen & Window Recorder Suite</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+  <!-- App Header Bar -->
+  <header class="app-header">
+    <div class="brand">
+      <div class="brand-icon">⏺</div>
+      <span class="brand-title">OnyxScreen Pro</span>
+    </div>
+    <div class="header-status">
+      <div class="status-dot" id="statusDot"></div>
+      <span id="statusText">Ready</span>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <div class="app-container">
+
+    <!-- Top Action Toolbar -->
+    <div class="toolbar">
+      <div class="tool-group">
+        <button class="btn btn-primary" id="btnSelectSource">
+          <span>🪟</span> Select Window / Screen
+        </button>
+        <div class="source-badge" id="sourceBadge">
+          <span>Selected:</span> <strong id="sourceName">Entire Screen</strong>
+        </div>
+      </div>
+
+      <div class="tool-group">
+        <!-- Record Button -->
+        <button class="btn btn-record" id="btnRecord">
+          <span id="recIcon">🔴</span> <span id="recText">Start Record</span>
+        </button>
+
+        <!-- Screenshot Full Window -->
+        <button class="btn" id="btnSnapFull" title="Full Window Screenshot">
+          📸 Full Snap
+        </button>
+
+        <!-- Screenshot Custom Rectangle -->
+        <button class="btn" id="btnSnapCrop" title="Crop Rectangle Screenshot">
+          ✂️ Crop Rectangle
+        </button>
+      </div>
+
+      <div class="tool-group">
+        <label class="btn" style="cursor: pointer;">
+          <input type="checkbox" id="chkAudio" style="accent-color: var(--neon-cyan);" />
+          🎤 Mic Audio
+        </label>
+        <div class="timer-display" id="recTimer">00:00:00</div>
+      </div>
+    </div>
+
+    <!-- Main Preview & View Area -->
+    <div class="view-area" id="viewArea">
+      
+      <!-- Video / Screenshot Previewer -->
+      <div class="preview-wrapper" id="previewWrapper">
+        <video id="videoPreview" autoplay muted style="display: none;"></video>
+        <canvas id="imagePreviewCanvas" style="display: none;"></canvas>
+
+        <div class="empty-state" id="emptyState">
+          <div class="empty-icon">🎥</div>
+          <h3>Pilih Window atau Screen Untuk Memulai</h3>
+          <p>Klik tombol <strong>"Select Window / Screen"</strong> untuk merekam atau mengambil screenshot aplikasi tertentu.</p>
+        </div>
+      </div>
+
+      <!-- Interactive Rectangle Crop Selection Overlay -->
+      <div class="crop-overlay" id="cropOverlay">
+        <div class="crop-rect" id="cropRect"></div>
+      </div>
+    </div>
+
+    <!-- Result Editor Drawer -->
+    <div class="editor-panel" id="editorPanel" style="display: none;">
+      <div class="editor-controls">
+        <div class="tool-group">
+          <button class="btn" id="btnPlayPause">▶ Play</button>
+          <span style="font-size: 13px; color: var(--text-muted);">Speed:</span>
+          <button class="btn" id="btnSpeed05">0.5x</button>
+          <button class="btn" id="btnSpeed1" style="border-color: var(--neon-cyan);">1.0x</button>
+          <button class="btn" id="btnSpeed15">1.5x</button>
+          <button class="btn" id="btnSpeed2">2.0x</button>
+        </div>
+
+        <div class="tool-group">
+          <input type="text" id="txtWatermark" placeholder="Add Watermark / Text..." class="btn" style="width: 200px; text-align: left;" />
+          <button class="btn" id="btnCopyClipboard" title="Copy to Clipboard">📋 Copy</button>
+          <button class="btn btn-primary" id="btnExport">💾 Export & Save</button>
+        </div>
+      </div>
+
+      <!-- Video Trim Timeline -->
+      <div class="timeline-container" id="videoTimelineContainer">
+        <div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--text-muted);">
+          <span>Start Trim: <strong id="lblTrimStart">0s</strong></span>
+          <span>Timeline Position</span>
+          <span>End Trim: <strong id="lblTrimEnd">0s</strong></span>
+        </div>
+        <input type="range" id="videoScrubber" min="0" max="100" value="0" class="timeline-slider" />
+        <div style="display: flex; gap: 10px;">
+          <input type="range" id="trimStartRange" min="0" max="100" value="0" class="timeline-slider" title="Set Trim Start" />
+          <input type="range" id="trimEndRange" min="0" max="100" value="100" class="timeline-slider" title="Set Trim End" />
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Source Selector Modal -->
+  <div class="modal-backdrop" id="sourceModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <div class="modal-title">🪟 Pilih Window / Aplikasi Yang Ingin Direkam</div>
+        <button class="btn" id="btnCloseModal">✕ Close</button>
+      </div>
+      <div class="sources-grid" id="sourcesGrid">
+        <!-- Source items populated dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>

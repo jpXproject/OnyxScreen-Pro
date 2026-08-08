@@ -1,0 +1,23 @@
+{
+  "name": "onyx-screen-pro",
+  "version": "1.0.0",
+  "description": "Sleek Dark-Mode Screen & Window Recorder + Capture & Editor Suite",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron ."
+  },
+  "keywords": [
+    "screen-recorder",
+    "window-capture",
+    "screenshot",
+    "video-editor",
+    "ffmpeg",
+    "electron"
+  ],
+  "author": "jpXproject",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^31.7.7"
+  }
+}
