@@ -1,5 +1,5 @@
 /* ============================================================
-   ONYXSCREEN PRO — RENDERER & APPLICATION CONTROLLER
+   ONYXSCREEN PRO STUDIO — RENDERER & APPLICATION CONTROLLER
    ============================================================ */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -21,14 +21,19 @@ document.addEventListener('DOMContentLoaded', () => {
   const chkAudio = document.getElementById('chkAudio');
   const recTimer = document.getElementById('recTimer');
 
-  const emptyState = document.getElementById('emptyState');
+  const studioFrame = document.getElementById('studioFrame');
   const previewWrapper = document.getElementById('previewWrapper');
   const videoPreview = document.getElementById('videoPreview');
   const imagePreviewCanvas = document.getElementById('imagePreviewCanvas');
+  const emptyState = document.getElementById('emptyState');
+
   const cropOverlay = document.getElementById('cropOverlay');
   const cropRect = document.getElementById('cropRect');
 
   const editorPanel = document.getElementById('editorPanel');
+  const selBgGradient = document.getElementById('selBgGradient');
+  const selPadding = document.getElementById('selPadding');
+  const selRadius = document.getElementById('selRadius');
   const btnPlayPause = document.getElementById('btnPlayPause');
   const btnSpeed05 = document.getElementById('btnSpeed05');
   const btnSpeed1 = document.getElementById('btnSpeed1');
@@ -37,7 +42,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const txtWatermark = document.getElementById('txtWatermark');
   const btnCopyClipboard = document.getElementById('btnCopyClipboard');
   const btnExport = document.getElementById('btnExport');
-  const videoScrubber = document.getElementById('videoScrubber');
   const trimStartRange = document.getElementById('trimStartRange');
   const trimEndRange = document.getElementById('trimEndRange');
   const lblTrimStart = document.getElementById('lblTrimStart');
@@ -52,25 +56,26 @@ document.addEventListener('DOMContentLoaded', () => {
   let isRecording = false;
   let timerInterval = null;
   let recordingSeconds = 0;
-  let currentMode = 'idle'; // 'idle', 'live', 'video_edit', 'image_edit'
+  let currentMode = 'idle';
 
   let cropStartX = 0, cropStartY = 0, cropEndX = 0, cropEndY = 0;
   let isCropping = false;
 
   /* ------------------------------------------------------------
-     1. WINDOW / SCREEN SOURCE SELECTOR
+     1. NATIVE & CARD WINDOW SOURCE SELECTOR (OpenScreen Style)
      ------------------------------------------------------------ */
   btnSelectSource.addEventListener('click', async () => {
+    // Show window selector modal with active application cards
     try {
       const sources = await window.onyxApi.getSources();
-      if (!sources || sources.length === 0) {
-        alert('Tidak ada window atau screen yang terdeteksi.');
-        return;
+      if (sources && sources.length > 0) {
+        renderSourceCards(sources);
+        sourceModal.classList.add('active');
+      } else {
+        triggerNativePicker();
       }
-      renderSourceCards(sources);
-      sourceModal.classList.add('active');
-    } catch (err) {
-      alert('Gagal mengambil daftar window: ' + err.message);
+    } catch (e) {
+      triggerNativePicker();
     }
   });
 
@@ -80,6 +85,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function renderSourceCards(sources) {
     sourcesGrid.innerHTML = '';
+
+    // Add Native Picker Card Option
+    const nativeCard = document.createElement('div');
+    nativeCard.className = 'source-card';
+    nativeCard.style.borderColor = 'var(--neon-cyan)';
+    nativeCard.innerHTML = `
+      <div class="source-thumb" style="display:grid;place-items:center;background:var(--grad-primary);color:#fff;font-size:32px;">🌐</div>
+      <div class="source-name"><strong>Gunakan Native Picker OS</strong></div>
+    `;
+    nativeCard.addEventListener('click', () => {
+      sourceModal.classList.remove('active');
+      triggerNativePicker();
+    });
+    sourcesGrid.appendChild(nativeCard);
+
     sources.forEach(src => {
       const card = document.createElement('div');
       card.className = 'source-card';
@@ -91,14 +111,32 @@ document.addEventListener('DOMContentLoaded', () => {
         ${thumbHtml}
         <div class="source-name" title="${src.name}">${src.name}</div>
       `;
-      card.addEventListener('click', () => selectSource(src));
+      card.addEventListener('click', () => selectSourceCard(src));
       sourcesGrid.appendChild(card);
     });
   }
 
-  async function selectSource(source) {
+  async function triggerNativePicker() {
+    try {
+      if (currentStream) {
+        currentStream.getTracks().forEach(t => t.stop());
+      }
+
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: { displaySurface: 'window' },
+        audio: false
+      });
+
+      attachStream(stream, 'Native Selected Window');
+    } catch (err) {
+      if (err.name !== 'NotAllowedError') {
+        alert('Gagal memilih stream: ' + err.message);
+      }
+    }
+  }
+
+  async function selectSourceCard(source) {
     selectedSource = source;
-    sourceName.textContent = source.name;
     sourceModal.classList.remove('active');
 
     try {
@@ -106,14 +144,11 @@ document.addEventListener('DOMContentLoaded', () => {
         await window.onyxApi.setSelectedSource(source.id);
       }
 
-      // Stop existing stream
       if (currentStream) {
         currentStream.getTracks().forEach(t => t.stop());
       }
 
       let stream = null;
-
-      // Method 1: Try direct getUserMedia with specific source ID
       try {
         const constraints = {
           audio: false,
@@ -126,63 +161,53 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         stream = await navigator.mediaDevices.getUserMedia(constraints);
       } catch (err1) {
-        console.warn('Direct getUserMedia failed for source:', source.name, err1);
-
-        // Method 2: Try getDisplayMedia fallback
-        try {
-          stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
-        } catch (err2) {
-          console.warn('getDisplayMedia fallback failed:', err2);
-
-          // Method 3: Fallback to primary screen capture if window is minimized or restricted
-          const allSources = await window.onyxApi.getSources();
-          const screenSource = allSources.find(s => s.id.startsWith('screen:')) || allSources[0];
-
-          if (screenSource) {
-            const screenConstraints = {
-              audio: false,
-              video: {
-                mandatory: {
-                  chromeMediaSource: 'desktop',
-                  chromeMediaSourceId: screenSource.id
-                }
-              }
-            };
-            stream = await navigator.mediaDevices.getUserMedia(screenConstraints);
-            alert(`Catatan: Window "${source.name}" sedang di-minimize atau tidak dapat dibaca oleh OS. Perekaman dialihkan ke Screen Utama.`);
-          } else {
-            throw err1;
-          }
-        }
+        // Fallback to native picker if constraint rejected
+        stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
       }
 
-      currentStream = stream;
-
-      // Add Mic audio if requested
-      if (chkAudio.checked) {
-        try {
-          const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-          micStream.getAudioTracks().forEach(track => currentStream.addTrack(track));
-        } catch (e) {
-          console.warn('Mic audio access denied or unavailable:', e);
-        }
-      }
-
-      videoPreview.srcObject = currentStream;
-      videoPreview.style.display = 'block';
-      imagePreviewCanvas.style.display = 'none';
-      emptyState.style.display = 'none';
-      editorPanel.style.display = 'none';
-
-      currentMode = 'live';
-      updateStatus(`Ready: ${source.name}`, false);
+      attachStream(stream, source.name);
     } catch (err) {
-      alert('Gagal membuka stream: ' + err.message + '\n\nTips: Pastikan window yang ingin direkam terbuka dan tidak dalam keadaan di-minimize ke taskbar.');
+      alert('Gagal membuka window stream: ' + err.message);
     }
   }
 
+  function attachStream(stream, labelName) {
+    currentStream = stream;
+    sourceName.textContent = labelName;
+
+    // Add Mic Audio if requested
+    if (chkAudio.checked) {
+      navigator.mediaDevices.getUserMedia({ audio: true }).then(micStream => {
+        micStream.getAudioTracks().forEach(track => currentStream.addTrack(track));
+      }).catch(() => {});
+    }
+
+    videoPreview.srcObject = currentStream;
+    videoPreview.style.display = 'block';
+    imagePreviewCanvas.style.display = 'none';
+    emptyState.style.display = 'none';
+
+    currentMode = 'live';
+    updateStatus(`Ready: ${labelName}`, false);
+  }
+
   /* ------------------------------------------------------------
-     2. SCREEN & WINDOW RECORDING CONTROLLER
+     2. STUDIO STYLING CONTROLLER (Screen Studio Presets)
+     ------------------------------------------------------------ */
+  selBgGradient.addEventListener('change', (e) => {
+    studioFrame.className = 'studio-frame bg-' + e.target.value;
+  });
+
+  selPadding.addEventListener('change', (e) => {
+    studioFrame.style.padding = `${e.target.value}px`;
+  });
+
+  selRadius.addEventListener('change', (e) => {
+    previewWrapper.style.borderRadius = `${e.target.value}px`;
+  });
+
+  /* ------------------------------------------------------------
+     3. SCREEN & WINDOW RECORDING CONTROLLER
      ------------------------------------------------------------ */
   btnRecord.addEventListener('click', () => {
     if (!currentStream) {
@@ -217,7 +242,7 @@ document.addEventListener('DOMContentLoaded', () => {
       setupVideoEditor(videoUrl);
     };
 
-    mediaRecorder.start(500); // chunk every 500ms
+    mediaRecorder.start(500);
     isRecording = true;
 
     btnRecord.classList.add('recording');
@@ -231,7 +256,7 @@ document.addEventListener('DOMContentLoaded', () => {
       updateTimerDisplay();
     }, 1000);
 
-    updateStatus('Recording...', true);
+    updateStatus('Recording Studio Stream...', true);
   }
 
   function stopRecording() {
@@ -244,7 +269,7 @@ document.addEventListener('DOMContentLoaded', () => {
       recText.textContent = 'Start Record';
 
       clearInterval(timerInterval);
-      updateStatus('Recording Stopped · Editing Mode', false);
+      updateStatus('Recording Stopped · Studio Editor Mode', false);
     }
   }
 
@@ -265,9 +290,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /* ------------------------------------------------------------
-     3. SCREENSHOT (FULL WINDOW & CUSTOM RECTANGLE CROP)
+     4. SCREENSHOT (FULL FRAME & RECTANGLE SELECTION CROP)
      ------------------------------------------------------------ */
-  // Full Window Screenshot
   btnSnapFull.addEventListener('click', () => {
     if (!videoPreview.srcObject) {
       alert('Silahkan pilih Window terlebih dahulu!');
@@ -287,19 +311,19 @@ document.addEventListener('DOMContentLoaded', () => {
     emptyState.style.display = 'none';
     editorPanel.style.display = 'flex';
 
+    document.getElementById('videoControlsGroup').style.display = 'none';
     document.getElementById('videoTimelineContainer').style.display = 'none';
     currentMode = 'image_edit';
-    updateStatus('Screenshot Captured (Full Window)', false);
+    updateStatus('Screenshot Captured (Full Frame)', false);
   });
 
-  // Custom Rectangle Crop Screenshot
   btnSnapCrop.addEventListener('click', () => {
     if (!videoPreview.srcObject) {
       alert('Silahkan pilih Window terlebih dahulu!');
       return;
     }
     cropOverlay.classList.add('active');
-    updateStatus('Drag untuk memilih area Rectangle Screenshot...', false);
+    updateStatus('Drag mouse untuk memilih area Screenshot...', false);
   });
 
   cropOverlay.addEventListener('mousedown', (e) => {
@@ -342,7 +366,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function captureRectangleCrop() {
     const videoRect = videoPreview.getBoundingClientRect();
-    const overlayRect = cropOverlay.getBoundingClientRect();
 
     const scaleX = videoPreview.videoWidth / videoRect.width;
     const scaleY = videoPreview.videoHeight / videoRect.height;
@@ -367,6 +390,7 @@ document.addEventListener('DOMContentLoaded', () => {
     emptyState.style.display = 'none';
     editorPanel.style.display = 'flex';
 
+    document.getElementById('videoControlsGroup').style.display = 'none';
     document.getElementById('videoTimelineContainer').style.display = 'none';
     currentMode = 'image_edit';
     updateStatus('Screenshot Captured (Rectangle Crop)', false);
@@ -380,11 +404,11 @@ document.addEventListener('DOMContentLoaded', () => {
     ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
     ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
     ctx.shadowBlur = 6;
-    ctx.fillText(text, 20, height - 20);
+    ctx.fillText(text, 24, height - 24);
   }
 
   /* ------------------------------------------------------------
-     4. RESULT EDITOR & EXPORT CONTROLLER
+     5. STUDIO EDITOR & EXPORT
      ------------------------------------------------------------ */
   function setupVideoEditor(videoUrl) {
     videoPreview.srcObject = null;
@@ -393,6 +417,7 @@ document.addEventListener('DOMContentLoaded', () => {
     videoPreview.style.display = 'block';
     imagePreviewCanvas.style.display = 'none';
     editorPanel.style.display = 'flex';
+    document.getElementById('videoControlsGroup').style.display = 'flex';
     document.getElementById('videoTimelineContainer').style.display = 'flex';
 
     currentMode = 'video_edit';
@@ -417,7 +442,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  /* Speed Buttons */
   [btnSpeed05, btnSpeed1, btnSpeed15, btnSpeed2].forEach(btn => {
     btn.addEventListener('click', (e) => {
       const speed = parseFloat(e.target.textContent);
@@ -427,7 +451,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  /* Copy to Clipboard */
   btnCopyClipboard.addEventListener('click', async () => {
     if (currentMode === 'image_edit') {
       const dataUrl = imagePreviewCanvas.toDataURL('image/png');
@@ -439,7 +462,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  /* Save & Export */
   btnExport.addEventListener('click', async () => {
     if (currentMode === 'image_edit') {
       const dataUrl = imagePreviewCanvas.toDataURL('image/png');
@@ -465,7 +487,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const res = await window.onyxApi.saveVideo({ buffer: ffmpegRes.buffer, format: 'mp4' });
         if (res.success) alert('Video MP4 berhasil di-export & disimpan di:\n' + res.filePath);
       } else {
-        // Fallback: save raw webm blob if FFmpeg fails or not present
         const res = await window.onyxApi.saveVideo({ buffer: arrayBuffer, format: 'webm' });
         if (res.success) alert('Video WebM berhasil disimpan di:\n' + res.filePath);
       }
@@ -473,7 +494,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  /* Trim sliders updates */
   trimStartRange.addEventListener('input', () => {
     lblTrimStart.textContent = `${trimStartRange.value}s`;
     videoPreview.currentTime = parseFloat(trimStartRange.value);

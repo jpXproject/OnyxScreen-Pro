@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>OnyxScreen Pro — Screen & Window Recorder Suite</title>
+  <title>OnyxScreen Pro Studio — Screen & Demo Suite</title>
   <link rel="stylesheet" href="styles.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -14,8 +14,8 @@
   <!-- App Header Bar -->
   <header class="app-header">
     <div class="brand">
-      <div class="brand-icon">⏺</div>
-      <span class="brand-title">OnyxScreen Pro</span>
+      <div class="brand-icon">✨</div>
+      <span class="brand-title">OnyxScreen Studio</span>
     </div>
     <div class="header-status">
       <div class="status-dot" id="statusDot"></div>
@@ -33,7 +33,7 @@
           <span>🪟</span> Select Window / Screen
         </button>
         <div class="source-badge" id="sourceBadge">
-          <span>Selected:</span> <strong id="sourceName">Entire Screen</strong>
+          <span>Selected:</span> <strong id="sourceName">No Window Selected</strong>
         </div>
       </div>
 
@@ -44,7 +44,7 @@
         </button>
 
         <!-- Screenshot Full Window -->
-        <button class="btn" id="btnSnapFull" title="Full Window Screenshot">
+        <button class="btn" id="btnSnapFull" title="Full Frame Screenshot">
           📸 Full Snap
         </button>
 
@@ -63,18 +63,28 @@
       </div>
     </div>
 
-    <!-- Main Preview & View Area -->
+    <!-- Main Studio Canvas & Viewport Area -->
     <div class="view-area" id="viewArea">
       
-      <!-- Video / Screenshot Previewer -->
-      <div class="preview-wrapper" id="previewWrapper">
-        <video id="videoPreview" autoplay muted style="display: none;"></video>
-        <canvas id="imagePreviewCanvas" style="display: none;"></canvas>
+      <!-- Studio Frame Wrapper (Screen Studio Style Padding & Frame) -->
+      <div class="studio-frame" id="studioFrame">
+        <!-- macOS Style Header Bar -->
+        <div class="window-bar" id="windowBar">
+          <span class="dot dot-red"></span>
+          <span class="dot dot-yellow"></span>
+          <span class="dot dot-green"></span>
+          <span class="window-title-text" id="windowTitleText">OnyxCapture Studio</span>
+        </div>
 
-        <div class="empty-state" id="emptyState">
-          <div class="empty-icon">🎥</div>
-          <h3>Pilih Window atau Screen Untuk Memulai</h3>
-          <p>Klik tombol <strong>"Select Window / Screen"</strong> untuk merekam atau mengambil screenshot aplikasi tertentu.</p>
+        <div class="preview-wrapper" id="previewWrapper">
+          <video id="videoPreview" autoplay muted style="display: none;"></video>
+          <canvas id="imagePreviewCanvas" style="display: none;"></canvas>
+
+          <div class="empty-state" id="emptyState">
+            <div class="empty-icon">🎬</div>
+            <h3>Pilih Window atau Screen Untuk Memulai Studio</h3>
+            <p>Klik <strong>"Select Window / Screen"</strong> untuk memilih aplikasi spesifik atau seluruh layar.</p>
+          </div>
         </div>
       </div>
 
@@ -84,33 +94,63 @@
       </div>
     </div>
 
-    <!-- Result Editor Drawer -->
+    <!-- Studio Results & Customizer Editor Panel -->
     <div class="editor-panel" id="editorPanel" style="display: none;">
       <div class="editor-controls">
+        
+        <!-- Screen Studio Styling Options -->
         <div class="tool-group">
+          <span class="group-label">🎨 Background:</span>
+          <select id="selBgGradient" class="btn">
+            <option value="aurora">Aurora Mesh</option>
+            <option value="dracula">Dracula Dark</option>
+            <option value="sunset">Sunset Glow</option>
+            <option value="cyberpunk">Cyberpunk Neon</option>
+            <option value="transparent">Transparent</option>
+          </select>
+
+          <span class="group-label">📐 Padding:</span>
+          <select id="selPadding" class="btn">
+            <option value="0">None (0px)</option>
+            <option value="20">Compact (20px)</option>
+            <option value="40" selected>Studio (40px)</option>
+            <option value="60">Max (60px)</option>
+          </select>
+
+          <span class="group-label">⭕ Radius:</span>
+          <select id="selRadius" class="btn">
+            <option value="0">Square (0px)</option>
+            <option value="12" selected>Rounded (12px)</option>
+            <option value="24">Super (24px)</option>
+          </select>
+        </div>
+
+        <!-- Video Trim & Speed Controls -->
+        <div class="tool-group" id="videoControlsGroup">
           <button class="btn" id="btnPlayPause">▶ Play</button>
-          <span style="font-size: 13px; color: var(--text-muted);">Speed:</span>
+          <span class="group-label">Speed:</span>
           <button class="btn" id="btnSpeed05">0.5x</button>
           <button class="btn" id="btnSpeed1" style="border-color: var(--neon-cyan);">1.0x</button>
           <button class="btn" id="btnSpeed15">1.5x</button>
           <button class="btn" id="btnSpeed2">2.0x</button>
         </div>
 
+        <!-- Watermark & Export -->
         <div class="tool-group">
-          <input type="text" id="txtWatermark" placeholder="Add Watermark / Text..." class="btn" style="width: 200px; text-align: left;" />
-          <button class="btn" id="btnCopyClipboard" title="Copy to Clipboard">📋 Copy</button>
-          <button class="btn btn-primary" id="btnExport">💾 Export & Save</button>
+          <input type="text" id="txtWatermark" placeholder="Add Watermark Text..." class="btn" style="width: 180px; text-align: left;" />
+          <button class="btn" id="btnCopyClipboard" title="Copy Screenshot to Clipboard">📋 Copy</button>
+          <button class="btn btn-primary" id="btnExport">💾 Export Video / PNG</button>
         </div>
+
       </div>
 
-      <!-- Video Trim Timeline -->
+      <!-- Video Timeline Scrubber -->
       <div class="timeline-container" id="videoTimelineContainer">
         <div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--text-muted);">
           <span>Start Trim: <strong id="lblTrimStart">0s</strong></span>
-          <span>Timeline Position</span>
+          <span>Studio Video Timeline</span>
           <span>End Trim: <strong id="lblTrimEnd">0s</strong></span>
         </div>
-        <input type="range" id="videoScrubber" min="0" max="100" value="0" class="timeline-slider" />
         <div style="display: flex; gap: 10px;">
           <input type="range" id="trimStartRange" min="0" max="100" value="0" class="timeline-slider" title="Set Trim Start" />
           <input type="range" id="trimEndRange" min="0" max="100" value="100" class="timeline-slider" title="Set Trim End" />
@@ -126,7 +166,7 @@
       <div class="modal-header">
         <div>
           <div class="modal-title">🪟 Pilih Window / Aplikasi Yang Ingin Direkam</div>
-          <div style="font-size: 12px; color: var(--neon-cyan); margin-top: 4px;">💡 Tips: Pastikan aplikasi yang ingin direkam tidak di-minimize ke taskbar.</div>
+          <div style="font-size: 12px; color: var(--neon-cyan); margin-top: 4px;">💡 Tips: Pastikan aplikasi yang ingin direkam terbuka dan aktif di layar.</div>
         </div>
         <button class="btn" id="btnCloseModal">✕ Close</button>
       </div>

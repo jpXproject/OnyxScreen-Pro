@@ -1,10 +1,10 @@
 /* ============================================================
-   ONYXSCREEN PRO — SLEEK DARK DESIGN SYSTEM
+   ONYXSCREEN PRO STUDIO — SLEEK DARK DESIGN SYSTEM
    ============================================================ */
 
 :root {
-  --bg-dark: #08090d;
-  --bg-panel: rgba(18, 20, 30, 0.75);
+  --bg-dark: #07080c;
+  --bg-panel: rgba(16, 18, 28, 0.85);
   --bg-card: rgba(28, 32, 48, 0.65);
   --border-color: rgba(255, 255, 255, 0.08);
   --border-highlight: rgba(0, 242, 254, 0.35);
@@ -21,7 +21,6 @@
 
   --grad-primary: linear-gradient(135deg, #00f2fe 0%, #4facfe 50%, #7f00ff 100%);
   --grad-record: linear-gradient(135deg, #ff3366 0%, #f107a3 100%);
-  --grad-card: linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.01) 100%);
 
   --radius-xl: 20px;
   --radius-lg: 14px;
@@ -51,7 +50,7 @@ body {
 
 /* App Header & Titlebar Drag */
 .app-header {
-  height: 48px;
+  height: 44px;
   background: var(--bg-panel);
   backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--border-color);
@@ -129,8 +128,8 @@ body {
 
 /* Top Toolbar */
 .toolbar {
-  padding: 14px 20px;
-  background: rgba(12, 14, 22, 0.8);
+  padding: 12px 20px;
+  background: rgba(12, 14, 22, 0.85);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border-color);
   display: flex;
@@ -146,11 +145,17 @@ body {
   gap: 10px;
 }
 
+.group-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
 .btn {
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   color: var(--text-main);
-  padding: 9px 16px;
+  padding: 8px 14px;
   border-radius: var(--radius-md);
   font-size: 13px;
   font-weight: 500;
@@ -166,10 +171,6 @@ body {
   background: rgba(40, 46, 68, 0.8);
   border-color: var(--border-highlight);
   transform: translateY(-1px);
-}
-
-.btn:active {
-  transform: translateY(0);
 }
 
 .btn-primary {
@@ -212,7 +213,7 @@ body {
   display: flex;
   align-items: center;
   gap: 6px;
-  max-width: 220px;
+  max-width: 240px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -224,17 +225,83 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px;
+  padding: 30px;
   position: relative;
   overflow: hidden;
-  background: radial-gradient(circle at center, rgba(15, 20, 35, 0.8) 0%, var(--bg-dark) 100%);
+  background: radial-gradient(circle at center, rgba(18, 24, 40, 0.9) 0%, var(--bg-dark) 100%);
+}
+
+/* Screen Studio Frame Container */
+.studio-frame {
+  position: relative;
+  padding: 40px;
+  border-radius: var(--radius-xl);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at 30% 30%, rgba(0, 242, 254, 0.35), rgba(127, 0, 255, 0.45));
+  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.7);
+  max-width: 100%;
+  max-height: 100%;
+}
+
+/* Background Preset Variants */
+.studio-frame.bg-aurora {
+  background: radial-gradient(circle at 20% 20%, rgba(0, 242, 254, 0.4), rgba(241, 7, 163, 0.35), rgba(127, 0, 255, 0.5));
+}
+.studio-frame.bg-dracula {
+  background: linear-gradient(135deg, #282a36 0%, #44475a 50%, #6272a4 100%);
+}
+.studio-frame.bg-sunset {
+  background: linear-gradient(135deg, #ff7e5f 0%, #feb47b 100%);
+}
+.studio-frame.bg-cyberpunk {
+  background: linear-gradient(135deg, #00f2fe 0%, #4facfe 40%, #000000 100%);
+}
+.studio-frame.bg-transparent {
+  background: transparent;
+  box-shadow: none;
+}
+
+/* macOS Window Bar */
+.window-bar {
+  width: 100%;
+  height: 32px;
+  background: rgba(20, 22, 34, 0.9);
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  gap: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: none;
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+.dot-red { background: #ff5f56; }
+.dot-yellow { background: #ffbd2e; }
+.dot-green { background: #27c93f; }
+
+.window-title-text {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-left: 10px;
+  font-weight: 500;
 }
 
 .preview-wrapper {
   position: relative;
   max-width: 100%;
   max-height: 100%;
-  border-radius: var(--radius-lg);
+  border-bottom-left-radius: 12px;
+  border-bottom-right-radius: 12px;
   overflow: hidden;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), 0 0 0 1px var(--border-color);
   background: #000;
@@ -245,7 +312,7 @@ body {
 
 #videoPreview, #imagePreviewCanvas {
   max-width: 100%;
-  max-height: calc(100vh - 220px);
+  max-height: calc(100vh - 280px);
   object-fit: contain;
   display: block;
 }
@@ -255,10 +322,10 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 16px;
+  gap: 14px;
   color: var(--text-muted);
   text-align: center;
-  padding: 40px;
+  padding: 60px 40px;
 }
 
 .empty-icon {
@@ -266,7 +333,7 @@ body {
   height: 70px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.03);
-  border: 1px stroke var(--border-color);
+  border: 1px solid var(--border-color);
   display: grid;
   place-items: center;
   font-size: 32px;
@@ -391,13 +458,13 @@ body {
 
 /* Result Editor Drawer / Panel */
 .editor-panel {
-  height: 180px;
+  height: 160px;
   background: var(--bg-panel);
   border-top: 1px solid var(--border-color);
-  padding: 16px 24px;
+  padding: 14px 24px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
   backdrop-filter: blur(16px);
 }
 

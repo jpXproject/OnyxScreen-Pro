@@ -4,19 +4,18 @@ const fs = require('fs');
 const { spawn } = require('child_process');
 
 let mainWindow;
-let currentSelectedSourceId = null;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 1280,
-    height: 850,
-    minWidth: 900,
-    minHeight: 650,
-    backgroundColor: '#0a0b10',
-    title: 'OnyxScreen Pro — Screen & Window Recorder Suite',
+    width: 1380,
+    height: 900,
+    minWidth: 960,
+    minHeight: 680,
+    backgroundColor: '#07080c',
+    title: 'OnyxScreen Pro Studio — Screen & Demo Suite',
     titleBarStyle: 'hidden',
     titleBarOverlay: {
-      color: '#0a0b10',
+      color: '#07080c',
       symbolColor: '#f2f4f8',
       height: 38
     },
@@ -33,14 +32,12 @@ function createWindow() {
 app.whenReady().then(() => {
   createWindow();
 
-  // Dynamically match display media request to user's selected window/screen source
+  // Allow native displayMedia window selection
   if (session && session.defaultSession) {
     session.defaultSession.setDisplayMediaRequestHandler((request, callback) => {
       desktopCapturer.getSources({ types: ['window', 'screen'] }).then((sources) => {
-        const found = sources.find(s => s.id === currentSelectedSourceId);
-        if (found) {
-          callback({ video: found });
-        } else if (sources.length > 0) {
+        // If request has a specific selection or prompt, grant access
+        if (sources.length > 0) {
           callback({ video: sources[0] });
         } else {
           callback({ video: null });
@@ -59,11 +56,6 @@ app.on('window-all-closed', () => {
 });
 
 /* IPC Handlers */
-ipcMain.handle('set-selected-source', (event, sourceId) => {
-  currentSelectedSourceId = sourceId;
-  return { success: true };
-});
-
 ipcMain.handle('get-sources', async () => {
   try {
     const sources = await desktopCapturer.getSources({
@@ -78,9 +70,7 @@ ipcMain.handle('get-sources', async () => {
         if (source.thumbnail && !source.thumbnail.isEmpty()) {
           thumbData = source.thumbnail.toDataURL();
         }
-      } catch (e) {
-        console.warn('Could not generate thumbnail for source:', source.name, e);
-      }
+      } catch (e) {}
 
       let iconData = null;
       try {
@@ -91,7 +81,7 @@ ipcMain.handle('get-sources', async () => {
 
       return {
         id: source.id,
-        name: source.name || 'Unnamed Window',
+        name: source.name || 'Unnamed Source',
         thumbnail: thumbData,
         appIcon: iconData
       };
@@ -106,7 +96,7 @@ ipcMain.handle('save-video', async (event, { buffer, defaultName, format }) => {
   const ext = format === 'mp4' ? 'mp4' : 'webm';
   const { filePath } = await dialog.showSaveDialog(mainWindow, {
     title: 'Save Recorded Video',
-    defaultPath: defaultName || `OnyxCapture_${Date.now()}.${ext}`,
+    defaultPath: defaultName || `OnyxStudio_${Date.now()}.${ext}`,
     filters: [
       { name: format === 'mp4' ? 'MP4 Video (*.mp4)' : 'WebM Video (*.webm)', extensions: [ext] }
     ]
