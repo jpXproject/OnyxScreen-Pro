@@ -63,6 +63,10 @@ document.addEventListener('DOMContentLoaded', () => {
   btnSelectSource.addEventListener('click', async () => {
     try {
       const sources = await window.onyxApi.getSources();
+      if (!sources || sources.length === 0) {
+        alert('Tidak ada window atau screen yang terdeteksi.');
+        return;
+      }
       renderSourceCards(sources);
       sourceModal.classList.add('active');
     } catch (err) {
@@ -79,8 +83,12 @@ document.addEventListener('DOMContentLoaded', () => {
     sources.forEach(src => {
       const card = document.createElement('div');
       card.className = 'source-card';
+      const thumbHtml = src.thumbnail 
+        ? `<img class="source-thumb" src="${src.thumbnail}" alt="${src.name}" />`
+        : `<div class="source-thumb" style="display:grid;place-items:center;background:#1a1d2d;color:var(--neon-cyan);font-size:24px;">🪟</div>`;
+
       card.innerHTML = `
-        <img class="source-thumb" src="${src.thumbnail}" alt="${src.name}" />
+        ${thumbHtml}
         <div class="source-name" title="${src.name}">${src.name}</div>
       `;
       card.addEventListener('click', () => selectSource(src));
@@ -99,22 +107,24 @@ document.addEventListener('DOMContentLoaded', () => {
         currentStream.getTracks().forEach(t => t.stop());
       }
 
-      const constraints = {
-        audio: false,
-        video: {
-          mandatory: {
-            chromeMediaSource: 'desktop',
-            chromeMediaSourceId: source.id,
-            minWidth: 1280,
-            maxWidth: 1920,
-            minHeight: 720,
-            maxHeight: 1080,
-            minFrameRate: 30
+      let stream = null;
+      try {
+        const constraints = {
+          audio: false,
+          video: {
+            mandatory: {
+              chromeMediaSource: 'desktop',
+              chromeMediaSourceId: source.id
+            }
           }
-        }
-      };
+        };
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+      } catch (errGUM) {
+        console.warn('getUserMedia failed, trying getDisplayMedia fallback:', errGUM);
+        stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+      }
 
-      currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+      currentStream = stream;
 
       // Add Mic audio if requested
       if (chkAudio.checked) {

@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, desktopCapturer, dialog, clipboard, nativeImage } = require('electron');
+const { app, BrowserWindow, ipcMain, desktopCapturer, dialog, clipboard, nativeImage, session } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
@@ -32,6 +32,19 @@ function createWindow() {
 app.whenReady().then(() => {
   createWindow();
 
+  // Handle display media requests cleanly
+  if (session && session.defaultSession) {
+    session.defaultSession.setDisplayMediaRequestHandler((request, callback) => {
+      desktopCapturer.getSources({ types: ['screen', 'window'] }).then((sources) => {
+        if (sources.length > 0) {
+          callback({ video: sources[0] });
+        } else {
+          callback({ video: null });
+        }
+      }).catch(() => callback({ video: null }));
+    });
+  }
+
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
@@ -43,17 +56,41 @@ app.on('window-all-closed', () => {
 
 /* IPC Handlers */
 ipcMain.handle('get-sources', async () => {
-  const sources = await desktopCapturer.getSources({
-    types: ['window', 'screen'],
-    thumbnailSize: { width: 480, height: 270 }
-  });
+  try {
+    const sources = await desktopCapturer.getSources({
+      types: ['window', 'screen'],
+      thumbnailSize: { width: 480, height: 270 },
+      fetchWindowIcons: true
+    });
 
-  return sources.map(source => ({
-    id: source.id,
-    name: source.name,
-    thumbnail: source.thumbnail.toDataURL(),
-    appIcon: source.appIcon ? source.appIcon.toDataURL() : null
-  }));
+    return sources.map(source => {
+      let thumbData = '';
+      try {
+        if (source.thumbnail && !source.thumbnail.isEmpty()) {
+          thumbData = source.thumbnail.toDataURL();
+        }
+      } catch (e) {
+        console.warn('Could not generate thumbnail for source:', source.name, e);
+      }
+
+      let iconData = null;
+      try {
+        if (source.appIcon && !source.appIcon.isEmpty()) {
+          iconData = source.appIcon.toDataURL();
+        }
+      } catch (e) {}
+
+      return {
+        id: source.id,
+        name: source.name || 'Unnamed Window',
+        thumbnail: thumbData,
+        appIcon: iconData
+      };
+    });
+  } catch (err) {
+    console.error('Error in get-sources IPC:', err);
+    return [];
+  }
 });
 
 ipcMain.handle('save-video', async (event, { buffer, defaultName, format }) => {
@@ -101,7 +138,7 @@ ipcMain.handle('copy-image-to-clipboard', (event, dataUrl) => {
   }
 });
 
-/* FFmpeg Processing Handler (for video trimming and MP4 conversion) */
+/* FFmpeg Processing Handler */
 ipcMain.handle('process-ffmpeg', async (event, { inputBuffer, startTime, endTime, speed, outputFormat }) => {
   return new Promise((resolve) => {
     const tempDir = app.getPath('temp');
@@ -112,7 +149,7 @@ ipcMain.handle('process-ffmpeg', async (event, { inputBuffer, startTime, endTime
 
     const args = ['-y', '-i', tempInput];
 
-    if (startTime !== undefined && startTime !== null) {
+    if (startTime !== undefined && startTime !== null && startTime > 0) {
       args.push('-ss', startTime.toString());
     }
     if (endTime !== undefined && endTime !== null && endTime > 0) {
@@ -136,7 +173,6 @@ ipcMain.handle('process-ffmpeg', async (event, { inputBuffer, startTime, endTime
     ffmpegProcess.on('close', (code) => {
       if (code === 0 && fs.existsSync(tempOutput)) {
         const outputBuffer = fs.readFileSync(tempOutput);
-        // Clean up temp files
         try { fs.unlinkSync(tempInput); fs.unlinkSync(tempOutput); } catch {}
         resolve({ success: true, buffer: outputBuffer });
       } else {
